@@ -53,7 +53,8 @@ local function is_comment_block_start(line)
   return nil
 end
 
-local function set_indentation(indentation)
+local function set_indentation(indentation, bufnr)
+  bufnr = bufnr or 0
   local function set_buffer_opt(buffer, name, value)
     -- Setting an option takes *significantly* more time than reading it.
     -- This wrapper function only sets the option if the new value differs
@@ -65,20 +66,21 @@ local function set_indentation(indentation)
   end
 
   if indentation == "tabs" then
-    set_buffer_opt(0, "expandtab", false)
-    print("Did set indentation to tabs.")
+    set_buffer_opt(bufnr, "expandtab", false)
+    -- print("Did set indentation to tabs.")
   elseif type(indentation) == "number" and indentation > 0 then
-    set_buffer_opt(0, "expandtab", true)
-    set_buffer_opt(0, "tabstop", indentation)
-    set_buffer_opt(0, "softtabstop", indentation)
-    set_buffer_opt(0, "shiftwidth", indentation)
-    print("Did set indentation to", indentation, "spaces.")
+    set_buffer_opt(bufnr, "expandtab", true)
+    set_buffer_opt(bufnr, "tabstop", indentation)
+    set_buffer_opt(bufnr, "softtabstop", indentation)
+    set_buffer_opt(bufnr, "shiftwidth", indentation)
+    -- print("Did set indentation to", indentation, "spaces.")
   else
-    print("Failed to detect indentation style.")
+    -- print("Failed to detect indentation style.")
   end
 end
 
-function M.guess_from_buffer()
+function M.guess_from_buffer(bufnr)
+  bufnr = bufnr or 0
   -- Line loading configuration
   -- Instead of loading all lines at once, load them lazily in chunks.
   local max_num_lines = 1028
@@ -110,7 +112,8 @@ function M.guess_from_buffer()
 
   for chunk_start = 0, (max_num_lines - 1), chunk_size do
     -- Load new chunk
-    local lines = vim.api.nvim_buf_get_lines(0, chunk_start, math.min(chunk_start + chunk_size, max_num_lines), false)
+    local lines =
+      vim.api.nvim_buf_get_lines(bufnr, chunk_start, math.min(chunk_start + chunk_size, max_num_lines), false)
     v_num_lines_loaded = v_num_lines_loaded + #lines
 
     -- Check each line for its indentation
@@ -265,7 +268,7 @@ end
 -- Set the indentation based on the contents of the current buffer.
 -- The argument `context` should only be set to `auto_cmd` if this function gets
 -- called by an auto command.
-function M.set_from_buffer(context)
+function M.set_from_buffer(context, bufnr)
   if context == "auto_cmd" then
     -- editorconfig interoperability
     if not config.override_editorconfig then
@@ -298,8 +301,8 @@ function M.set_from_buffer(context)
     end
   end
 
-  local indentation = M.guess_from_buffer()
-  set_indentation(indentation)
+  local indentation = M.guess_from_buffer(bufnr)
+  set_indentation(indentation, bufnr)
 end
 
 function M.setup(options)
